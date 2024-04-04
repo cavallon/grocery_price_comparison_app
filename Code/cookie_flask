@@ -1,0 +1,128 @@
+
+import numpy as np
+import sqlalchemy
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, func
+from import_export import get_products_dataframe
+from flask import Flask, jsonify, render_template
+import pandas as pd
+
+
+engine = create_engine("sqlite:///grocery.sqlite")
+
+Base = automap_base()
+
+Base.prepare(autoload_with=engine)
+
+products = Base.classes.products
+
+app = Flask(__name__)
+
+@app.route("/")
+def welcome():
+    return (
+        f"Select which cookie info you'd like to see!<br/>"
+        f"/allstores gives the minimum cost of ingredients per store and a sum total.<br/>"
+        f"/bar_chart_dates returns a chart with dates regarding database upkeep.<br/>"
+        f"/bar_chart_store_totals is an interactive barchart, hover for info.<br/>"
+        f"<br/>"
+        f"/allstores<br/>"
+        f"/bar_chart_dates<br/>"
+        f"/bar_chart_store_totals<br/>"
+        #f"/All product info"
+    )
+    
+
+@app.route("/allstores")
+def allstoresmin():
+    session = Session(engine)
+
+    results = session.query(products.store, products.ingredient, func.min(products.price).label('min_price')) \
+        .group_by(products.store, products.ingredient) \
+        .all()
+
+    session.close()
+
+    store_min_prices = {}
+    for store, ingredient, min_price in results:
+        if store not in store_min_prices:
+            store_min_prices[store] = {}
+        if ingredient not in store_min_prices[store]:
+            store_min_prices[store][ingredient] = min_price
+        else:
+            store_min_prices[store][ingredient] += min_price
+
+    return render_template('cookie_html.html', store_min_prices=store_min_prices)
+
+# 
+
+@app.route('/bar_chart_store_totals')
+def homepage():
+    session = Session(engine)
+
+    results = session.query(products.store, products.ingredient, func.min(products.price).label('min_price')) \
+        .group_by(products.store, products.ingredient) \
+        .all()
+
+    session.close()
+
+    store_min_prices = {}
+    for store, ingredient, min_price in results:
+        if store not in store_min_prices:
+            store_min_prices[store] = []
+        store_min_prices[store].append({'ingredient': ingredient, 'min_price': min_price})
+
+    # Convert the dictionary into a list of dictionaries
+    min_prices_list = [{'store': store, 'ingredients': values} for store, values in store_min_prices.items()]
+
+    # Convert the list of dictionaries to a DataFrame
+    df = pd.DataFrame(min_prices_list)
+    df = df.set_index('store')
+
+    # Define Plot Data
+    labels = df.index.tolist()
+    
+    # Calculate the total minimum price for each store
+    data = df['ingredients'].apply(lambda x: sum(item['min_price'] for item in x)).tolist()
+
+    # Return the components to the HTML template
+    return render_template(
+        template_name_or_list='store_tot_barchart.html',
+        data=data,
+        labels=labels,
+    )
+ 
+
+
+@app.route('/bar_chart_dates')
+def datechart():
+    return render_template('dates_chart.html')
+
+
+if __name__ == '__main__':
+     app.run(debug=True)
+
+
+#UNUSED:
+     
+# @app.route("/cookiedata")
+# def yourcookie():
+#     session = Session(engine)
+
+#     results = session.query(products.store, products.ingredient, products.price) \
+#         .group_by(products.store) \
+#         .all()
+
+
+#     session.close()
+
+#     all_Stores = []
+#     for price, store, ingredient in results:
+#         groceries = {}
+#         groceries["price"] = price
+#         groceries["store"] = store
+#         groceries["ingredient"] = ingredient
+#         all_Stores.append(groceries)
+
+#     return jsonify(all_Stores)

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Stores</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='cookie_css.css') }}">
+</head>
+<body>
+    <div class="container">
+        {% for store, ingredients in store_min_prices.items() %}
+            <div class="store">
+                <h2>{{ store }}</h2>
+                <div class="ingredients">
+                    {% for ingredient, min_price in ingredients.items() %}
+                        <div class="ingredient">
+                            <span>{{ ingredient }}</span> - ${{ min_price }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="total-price">
+                    <strong>Total Price:</strong> ${{ '%.2f'|format(ingredients.values()|map('float')|sum) }}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
+
+
