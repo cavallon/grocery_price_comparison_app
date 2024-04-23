@@ -5,7 +5,7 @@
 
 Description: Interactive website to compare grocery prices across several grocery stores.
 
-# OVERVIEW:
+# Overview:
 
 "If only there was a way to compare all grocery store prices for a recipe"
     -- Christopher Avallon, 2024
